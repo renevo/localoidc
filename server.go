@@ -27,6 +27,14 @@ var continueHTML string
 
 var continueTemplate = template.Must(template.New("continue").Parse(continueHTML))
 
+//go:embed error.html
+var errorHTML string
+
+var errorTemplate = template.Must(template.New("error").Parse(errorHTML))
+
+//go:embed styles.css
+var stylesCSS string
+
 type server struct {
 	cfg      settings
 	storage  *storage
@@ -77,6 +85,10 @@ func (s *server) handler() http.Handler {
 	mux.HandleFunc("POST /userinfo", func(w http.ResponseWriter, r *http.Request) { op.Userinfo(w, r, s.provider) })
 	mux.HandleFunc("GET /login", s.login)
 	mux.HandleFunc("POST /login", s.confirm)
+	mux.HandleFunc("GET /styles.css", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		_, _ = w.Write([]byte(stylesCSS))
+	})
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("localoidc — DEVELOPMENT ONLY. No authentication.\nIssuer: " + s.cfg.issuer() + "\nConfigure your local OIDC client with this issuer and any nonempty client ID.\n"))
@@ -89,7 +101,7 @@ func (s *server) handler() http.Handler {
 		// same-origin form Origin without sending authorization URLs to callbacks
 		// on another origin, including callbacks using a different loopback port.
 		w.Header().Set("Referrer-Policy", "same-origin")
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
 		if !s.cfg.authorityAllowed(r.Host) || (r.URL.IsAbs() && r.URL.Host != s.cfg.address()) {
 			http.Error(w, "use the canonical loopback issuer", http.StatusBadRequest)
 			return
@@ -255,10 +267,19 @@ func (s *server) token(w http.ResponseWriter, r *http.Request) {
 
 func confirmationCookie(id string) string { return "localoidc_" + id }
 
+func confirmationError(w http.ResponseWriter, status int, title, message string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_ = errorTemplate.Execute(w, struct {
+		Title   string
+		Message string
+	}{Title: title, Message: message})
+}
+
 func (s *server) login(w http.ResponseWriter, r *http.Request) {
 	request, err := s.storage.AuthRequestByID(r.Context(), r.URL.Query().Get("id"))
 	if err != nil {
-		http.Error(w, "login request expired or already used", http.StatusBadRequest)
+		confirmationError(w, http.StatusBadRequest, "Sign-in request unavailable", "This login request expired, was already used, or is no longer available.")
 		return
 	}
 	a := request.(authRequest)
@@ -303,22 +324,22 @@ func displayClaim(claims map[string]any, name string) string {
 
 func (s *server) confirm(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RawQuery != "" || r.ParseForm() != nil || !singleValues(r.PostForm) {
-		http.Error(w, "invalid confirmation form", http.StatusBadRequest)
+		confirmationError(w, http.StatusBadRequest, "Unable to confirm sign-in", "The confirmation form is invalid. No identity was confirmed.")
 		return
 	}
 	if origin := r.Header.Get("Origin"); origin != "" && origin != s.cfg.issuer() {
-		http.Error(w, "invalid confirmation origin", http.StatusForbidden)
+		confirmationError(w, http.StatusForbidden, "Unable to confirm sign-in", "The confirmation did not come from this local issuer. No identity was confirmed.")
 		return
 	}
 	id, csrf := r.PostForm.Get("id"), r.PostForm.Get("csrf")
 	cookie, err := r.Cookie(confirmationCookie(id))
 	if err != nil || csrf == "" || subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(csrf)) != 1 {
-		http.Error(w, "invalid confirmation state", http.StatusForbidden)
+		confirmationError(w, http.StatusForbidden, "Unable to confirm sign-in", "The confirmation state is missing or invalid. Cookies must be enabled to confirm your local identity.")
 		return
 	}
 	a, err := s.storage.confirm(id, csrf)
 	if err != nil {
-		http.Error(w, "login request expired or already used", http.StatusBadRequest)
+		confirmationError(w, http.StatusBadRequest, "Sign-in request unavailable", "This login request expired, was already used, or is no longer available.")
 		return
 	}
 	http.SetCookie(w, &http.Cookie{

@@ -4,24 +4,56 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sign in locally · localoidc</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <main>
-    <p><code>localoidc</code></p>
+  <main class="panel">
+    <p class="wordmark">localoidc</p>
     <h1>Sign in locally</h1>
-    <p><strong>Development only — No authentication</strong></p>
-    <p>{{.Name}} {{.Email}} ({{.Subject}})</p>
+    <div class="identity">
+      {{if .Name}}
+        <p class="identity-name">{{.Name}}</p>
+      {{else}}
+        <p class="identity-name">{{.Subject}}</p>
+      {{end}}
+      {{if .Email}}
+        <p class="identity-email">{{.Email}}</p>
+      {{end}}
+      {{if .Name}}
+        <p class="identity-subject">
+          <code>{{.Subject}}</code>
+        </p>
+      {{end}}
+    </div>
     <form method="post" action="/login">
       <input type="hidden" name="id" value="{{.ID}}">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <button type="submit">Login</button>
     </form>
-    <dl>
-      <dt>Client</dt><dd><code>{{.Client}}</code></dd>
-      <dt>Scopes</dt><dd><code>{{.Scopes}}</code></dd>
-      <dt>Callback</dt><dd>{{.Redirect}}</dd>
+    <dl class="metadata">
+      <div>
+        <dt>Client</dt>
+        <dd>
+          <code>{{.Client}}</code>
+        </dd>
+      </div>
+      <div>
+        <dt>Scopes</dt>
+        <dd>
+          <code>{{.Scopes}}</code>
+        </dd>
+      </div>
+      <div>
+        <dt>Callback</dt>
+        <dd>
+          <code>{{.Redirect}}</code>
+        </dd>
+      </div>
     </dl>
-    <p>This synthetic identity is not proof of who you are. Close this tab to abandon the request.</p>
+    <p class="notice">
+      <strong>Development identity · No authentication</strong>
+      This synthetic identity is not proof of who you are.
+    </p>
   </main>
 </body>
 </html>

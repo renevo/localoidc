@@ -30,7 +30,7 @@ func TestLoginReferrerPolicyPreservesSameOrigin(t *testing.T) {
 	// This policy preserves the form's Origin and suppresses Referer entirely
 	// for foreign callbacks; no-referrer breaks Chromium navigation POSTs.
 	is.Equal(response.Header().Get("Referrer-Policy"), "same-origin")
-	is.Equal(response.Header().Get("Content-Security-Policy"), "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+	is.Equal(response.Header().Get("Content-Security-Policy"), "default-src 'none'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
 }
 
 func TestConfirmationCommitsDocumentBeforeCallbackNavigation(t *testing.T) {
@@ -119,6 +119,8 @@ func TestConfirmationCommitsDocumentBeforeCallbackNavigation(t *testing.T) {
 			is.Equal(len(store.codes), 0) // The continuation GET, not the POST, issues the code.
 			is.Equal(response.Header().Get("Location"), "")
 			if tc.wantStatus != http.StatusOK {
+				is.Equal(response.Header().Get("Content-Type"), "text/html; charset=utf-8")
+				is.True(strings.Contains(response.Body.String(), "Return to your application and start signing in again."))
 				return
 			}
 

@@ -34,9 +34,13 @@ validation are not bypassed. Codes are one-time, including concurrent redemption
 an exchange attempt that reaches code lookup consumes the code even if subsequent
 client/redirect/PKCE validation fails. Start a new authorization request after failure.
 
-Default confirmation shows **Sign in locally**, the configured identity, client,
-scopes and callback. It is intentionally placeholder HTML in milestone 1; styling
-and visual validation are deferred to milestone 2. Closing the tab abandons the request.
+Default confirmation shows **Sign in locally**, the configured name and email (with
+the subject as a fallback when no name is configured), client, scopes and callback.
+One **Login** button confirms the identity; there are no editable fields or account
+selectors. Closing the tab abandons the request. The dark interface uses system
+fonts and an embedded, locally served stylesheet: no external assets, JavaScript,
+or frontend build step. Its appearance is fixed; configure identity claims through
+`identity`, not through UI-specific settings.
 
 ```sh
 LOCALOIDC_SKIP_CONFIRMATION=true ./localoidc
@@ -100,7 +104,8 @@ timestamps, nonce, hashes, etc.) cannot be overridden through claim configuratio
   Only query-mode authorization responses are supported. No SPA CORS support.
 - Confirmation uses an escaped form, transaction-bound one-time CSRF state and an
   HttpOnly SameSite cookie. Framing is disabled and responses have a restrictive
-  CSP and no-store policy. `Referrer-Policy: same-origin` preserves normal Chromium
+  CSP (only same-origin styles and form submissions) and no-store policy.
+  `Referrer-Policy: same-origin` preserves normal Chromium
   form Origin behavior while suppressing referrers on cross-origin requests,
   including callbacks on different loopback ports. Requests, codes, secrets and
   tokens are not logged. This does **not** isolate the tool from other local
@@ -133,29 +138,45 @@ go vet ./...
 Tests cover application-owned configuration precedence/types, loopback and callback
 policies, claim release, prompt decisions, client-mode selection and bounded,
 one-time, expiring state. Assertions use only `github.com/matryer/is`. There is no
-integration test suite or browser automation.
+committed integration test suite or browser automation.
 
-Milestone 1 validation used one-off Python standard-library HTTP requests (not a
+Core validation used one-off Python standard-library HTTP requests (not a
 third-party relying-party application) against the running binary. Basic, POST,
 and public S256 exchanges, confirmation/code replay rejection, UserInfo typed
 claims, prompt behavior, Host rejection and unsupported routes were exercised.
 ID-token RS256 signatures were verified against the served JWKS with Python
-`cryptography`, together with issuer/audience/nonce/expiry checks. An additional
-Chrome 147 check against port 18080 exercised Login → continuation → local callback,
-Basic authentication with S256 token exchange, RS256/JWKS verification,
-issuer/audience/nonce/expiry checks, and typed UserInfo claims. This verifies the
-browser core flow, not styled UI: placeholder HTML remains until milestone 2.
-No browser screenshots or third-party client compatibility testing were performed.
+`cryptography`, together with issuer/audience/nonce/expiry checks. One-off Playwright
+checks using Chrome 147 also exercised Login → continuation → local callback →
+token exchange, RS256/JWKS verification, issuer/audience/nonce/expiry checks, and
+typed UserInfo claims with both normal and long-value configurations. Basic, POST,
+and public client modes, automatic approval, and `prompt=none`, `login`, `consent`,
+and `select_account` were exercised in core validation.
+
+Screenshots of the styled pages were captured and personally inspected at desktop
+(1440×1000), narrow (390px and 320px wide), and short (390×500) sizes, including
+long name/email/client/scope/callback values, hover/focus/pressed states, expired
+requests, and the continuation fallback at desktop and narrow widths. Geometry
+checks found no horizontal overflow, confirmed that headings remained reachable
+at the top of the page, and checked a minimum 44px button height. These were
+one-off checks, not a committed Playwright suite or automated visual regression
+coverage. Third-party relying-party compatibility remains untested.
 
 Manual smoke checklist:
 
 1. Start with the sample config. Check the warning and exact loopback issuer;
    inspect discovery at `/.well-known/openid-configuration` and JWKS at `/keys`.
-2. With a local relying-party app, request `openid profile email groups`. Confirm
-   Login, validate the ID-token signature/issuer/audience/nonce, and call `/userinfo`
-   with the returned access token. Record which client was used.
-3. Repeat with auto-approval, explicit login/consent, and `prompt=none`. Try a public
-   S256 client. Reusing an authorization code must fail.
+2. With a local callback listener or relying-party app, request
+   `openid profile email groups` with a nonce and S256 PKCE. Confirm Login, exchange
+   the callback code, validate the ID-token RS256 signature against `/keys` and its
+   issuer/audience/nonce/expiry, then call `/userinfo` and verify claim types.
+   Repeat with long identity, client, scope, and callback values. Record the browser
+   and client or one-off script used.
+3. Repeat with Basic, POST, and public S256 clients, automatic approval, and
+   `prompt=none`, `login`, `consent`, and `select_account`. Reusing an authorization
+   code must fail.
 4. Stop with Ctrl-C; restart and confirm that the old access token no longer works.
-5. Milestone 2: personally inspect desktop/narrow layouts, long values and keyboard
-   focus before claiming the UI visually complete.
+5. Capture and personally inspect 1440×1000, 390px/320px-wide, and 390×500 layouts
+   with default and long values; check hover, keyboard focus, and pressed states.
+   Check for horizontal overflow, reachable headings, and buttons at least 44px
+   high. Inspect expired/invalid confirmation pages and the continuation fallback
+   at desktop and narrow widths (disable automatic refresh to inspect the fallback).
