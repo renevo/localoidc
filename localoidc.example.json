@@ -1,0 +1,32 @@
+{
+  "port": 8080,
+  "skip_confirmation": false,
+  "identity": {
+    "sub": "local-user",
+    "claims": {
+      "name": "Local Developer",
+      "given_name": "Local",
+      "family_name": "Developer",
+      "preferred_username": "developer",
+      "email": "developer@localhost",
+      "email_verified": true,
+      "groups": ["developers", "local-admins"],
+      "roles": ["reader", "writer"],
+      "project": {"name": "sandbox", "enabled": true},
+      "level": 42
+    }
+  },
+  "scopes": {
+    "openid": [],
+    "profile": ["name", "given_name", "family_name", "preferred_username"],
+    "email": ["email", "email_verified"],
+    "groups": ["groups"],
+    "roles": ["roles"],
+    "project": ["project", "level"]
+  },
+  "redirect_uris": [],
+  "request_lifetime": "5m",
+  "code_lifetime": "1m",
+  "token_lifetime": "1h",
+  "max_transactions": 1024
+}

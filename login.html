@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in locally · localoidc</title>
+</head>
+<body>
+  <main>
+    <p><code>localoidc</code></p>
+    <h1>Sign in locally</h1>
+    <p><strong>Development only — No authentication</strong></p>
+    <p>{{.Name}} {{.Email}} ({{.Subject}})</p>
+    <form method="post" action="/login">
+      <input type="hidden" name="id" value="{{.ID}}">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <button type="submit">Login</button>
+    </form>
+    <dl>
+      <dt>Client</dt><dd><code>{{.Client}}</code></dd>
+      <dt>Scopes</dt><dd><code>{{.Scopes}}</code></dd>
+      <dt>Callback</dt><dd>{{.Redirect}}</dd>
+    </dl>
+    <p>This synthetic identity is not proof of who you are. Close this tab to abandon the request.</p>
+  </main>
+</body>
+</html>
