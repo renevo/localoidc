@@ -14,6 +14,13 @@ import (
 	"time"
 )
 
+// GoReleaser replaces these values with release metadata using linker flags.
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
+
 func main() {
 	// Dependency error attributes can include submitted parameters. Keep only
 	// fixed log messages and severity; never log requests, URLs or token payloads.
@@ -38,6 +45,10 @@ func main() {
 
 func run(ctx context.Context, args []string) error {
 	cfg, err := loadSettings(ctx, args, os.Environ(), os.Stderr)
+	if errors.Is(err, errVersionRequested) {
+		fmt.Printf("localoidc %s (commit %s, built %s)\n", version, commit, date)
+		return nil
+	}
 	if err != nil {
 		return err
 	}

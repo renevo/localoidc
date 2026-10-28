@@ -17,6 +17,8 @@ import (
 	"github.com/renevo/config"
 )
 
+var errVersionRequested = errors.New("version requested")
+
 type identity struct {
 	Subject string         `json:"sub"`
 	Claims  map[string]any `json:"claims"`
@@ -96,11 +98,16 @@ func loadSettings(ctx context.Context, args, environment []string, output io.Wri
 	path := flags.String("config", env["LOCALOIDC_CONFIG"], "JSON configuration file (or LOCALOIDC_CONFIG)")
 	port := flags.Int("port", cfg.Port, "loopback HTTP port (or HTTP_PORT)")
 	skip := flags.Bool("skip-confirmation", false, "automatically approve ordinary requests (or LOCALOIDC_SKIP_CONFIRMATION)")
+	showVersion := flags.Bool("version", false, "print build version and exit without starting the server")
 	if err := flags.Parse(args); err != nil {
 		return cfg, err
 	}
 	if flags.NArg() != 0 {
 		return cfg, errors.New("unexpected positional arguments")
+	}
+	// Build inspection must work even when the runtime configuration is invalid.
+	if *showVersion {
+		return cfg, errVersionRequested
 	}
 	set := config.NewSet()
 	portSetting := set.Setting("port", cfg.Port, "Loopback HTTP port")

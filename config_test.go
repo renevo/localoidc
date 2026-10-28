@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +11,14 @@ import (
 
 	"github.com/matryer/is"
 )
+
+func TestVersionDoesNotLoadRuntimeConfiguration(t *testing.T) {
+	is := is.New(t)
+	_, err := loadSettings(context.Background(), []string{"--version", "--config", filepath.Join(t.TempDir(), "missing.json")}, []string{
+		"HTTP_PORT=invalid", "LOCALOIDC_UNKNOWN=true",
+	}, io.Discard)
+	is.True(errors.Is(err, errVersionRequested))
+}
 
 func TestConfigurationPrecedenceAndTypes(t *testing.T) {
 	is := is.New(t)

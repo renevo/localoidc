@@ -16,7 +16,12 @@ go build -o localoidc .
 ./localoidc
 # Or use the sample identity and additional scopes:
 ./localoidc --config localoidc.example.json --port 8080
+./localoidc --version
 ```
+
+Plain `go build` reports `dev` with unknown commit/build time. Release builds embed
+the version, full commit and UTC build time; `--version` exits without reading
+runtime configuration or opening a listener.
 
 Configure your local OIDC client with issuer **`http://127.0.0.1:8080`**, any
 nonempty client ID, and a local callback. The client must explicitly allow a
@@ -58,8 +63,9 @@ requires confirmation. `none` combined with another prompt is invalid.
 Precedence: built-in defaults → selected JSON file → environment → explicit flags.
 Restart to reload. Unknown file keys/`LOCALOIDC_*` variables, invalid types, and
 out-of-range values fail startup. Composite settings replace, rather than merge,
-the defaults. `--help` lists CLI options. Only `--port`, `--config`, and
-`--skip-confirmation` are flags; other settings are file/environment values.
+the defaults. `--help` lists CLI options. Runtime flags are `--port`, `--config`, and
+`--skip-confirmation`; other settings are file/environment values. `--version`
+prints build metadata and exits.
 
 | JSON key | Environment | Default |
 | --- | --- | --- |
@@ -116,9 +122,115 @@ timestamps, nonce, hashes, etc.) cannot be overridden through claim configuratio
 - HTTP issuer and intentionally permissive clients are development deviations,
   not production OIDC authentication or a conformance/certification claim.
 - Tunnels, reverse proxies, shared-host deployment and remote port forwarding are
-  unsupported and can defeat loopback isolation. Run natively initially. Ordinary
-  Docker bridge `-p` publishing cannot reach a container-loopback listener. Native
-  Linux host networking may work; Desktop/WSL/VM arrangements are unvalidated.
+  unsupported and can defeat loopback isolation. Containers require **native Linux
+  host networking**, as described below. Docker bridge `-p` publishing cannot reach
+  a container-loopback listener. Docker Desktop, WSL and VM networking arrangements
+  are unsupported/unvalidated; use the native binary instead.
+
+## Distribution and containers
+
+GoReleaser OSS **v2.17.0** produces Linux, macOS (`darwin`) and Windows binaries
+for both amd64 and arm64. Linux/macOS archives are `.tar.gz`; Windows archives are
+`.zip`. Names are `localoidc_<version>_<os>_<arch>.<format>`. Each archive includes
+the binary, this README and the sample configuration. `checksums.txt` contains
+SHA-256 checksums. These are unsigned archives; there is no macOS signing or
+notarization. Cross-compilation does not establish runtime compatibility: only
+Linux amd64 is runtime-validated here.
+
+### Build locally without publishing
+
+Install Go 1.26+, GoReleaser OSS v2.17.0, Docker and buildx separately. From the
+repository root:
+
+```sh
+goreleaser check
+goreleaser release --snapshot --clean --skip=publish --parallelism 2 --timeout 15m
+```
+
+This replaces `dist/` with six native binaries, archives, checksums and metadata.
+With **v2.17.0**, this snapshot command also builds and loads separately tagged
+local Linux amd64/arm64 images; it does not push images or create a GitHub release.
+The log gives their exact names (`ghcr.io/renevo/localoidc:<snapshot-tag>-amd64`
+and `...-arm64`). They are local images despite the registry-qualified names.
+Snapshot image tags are not a multi-platform registry index. The `dockers_v2`
+configuration uses prebuilt, `CGO_ENABLED=0` binaries, so no QEMU or privileged
+binfmt installation is needed: the Dockerfile never executes target binaries.
+In a checkout without a Git remote, GoReleaser snapshots may report commit `none`;
+tagged releases from GitHub embed the real full commit.
+
+`docker build .` is **not** a source build: this Dockerfile expects GoReleaser's
+temporary build context containing `linux/amd64/localoidc` and
+`linux/arm64/localoidc`. Use the snapshot command rather than duplicating that
+build process. The scratch image contains only the executable and runs as
+`65532:65532`. There is no shell, CA bundle, package manager or writable runtime
+state; the application needs neither outbound connections nor filesystem writes.
+
+### Run a container on native Linux
+
+Use the local snapshot's amd64 or arm64 tag, or a published version tag after a
+release exists. For a future published release, substitute the actual tag:
+
+```sh
+IMAGE=ghcr.io/renevo/localoidc:vX.Y.Z
+docker run --rm --name localoidc --network host \
+  --read-only --cap-drop ALL --security-opt no-new-privileges \
+  -e HTTP_PORT=8080 "$IMAGE"
+```
+
+The issuer remains exactly **`http://127.0.0.1:8080`** on the Linux host. Do not
+add `-p`, use bridge networking, or change the listener to a wildcard address.
+Host networking shares the host's network namespace; it is not isolation from
+other host processes. Use an unused port, and never expose the issuer remotely.
+For reproducible runs, replace the version tag with the published index digest,
+`ghcr.io/renevo/localoidc@sha256:...`.
+
+To mount configuration, add these options before `"$IMAGE"`, then append
+`--config /config.json` after it:
+
+```sh
+--mount "type=bind,src=$(pwd)/localoidc.example.json,dst=/config.json,readonly"
+```
+
+The mounted file must be readable by UID 65532. The supplied synthetic sample may
+have mode `0600`; `chmod 0644 localoidc.example.json` makes that sample readable.
+Do not make sensitive files world-readable just to mount them. Environment
+configuration and application flags work as with the native binary.
+
+### Future tag publication and verification
+
+Nothing is published by a local snapshot or pull-request CI. After this repository
+is hosted at `github.com/renevo/localoidc`, review/merge the changes and explicitly
+push a new semantic version tag such as `v0.1.0`. The tag-only release workflow:
+
+1. Checks formatting, runs core tests with the race detector, runs `go vet`, and
+   validates the GoReleaser configuration. Ordinary branch/PR CI runs those same
+   checks without registry login or image publication.
+2. Uses `GITHUB_TOKEN` with `contents: write` and `packages: write` to create the
+   GitHub release with archives/checksums and push
+   **`ghcr.io/renevo/localoidc:<tag>`**, containing linux/amd64 and linux/arm64.
+   There is no `latest` alias. The source label associates the package with this
+   repository; an existing package may require granting this repository Actions
+   access before publication can succeed.
+3. Resolves the **remote index digest**, verifies both executable platforms
+   (ignoring identified attestation descriptors), then pulls/runs the immutable
+   amd64 image on the Linux runner. It checks the configured nonroot user,
+   read-only/capability-restricted startup, the discovery issuer, and the actual
+   listening socket: only `127.0.0.1:18083`, including an IPv6 listener check.
+   Retries and commands are bounded; failure prints container logs and cleans up.
+
+The post-publication check can also be run on native Linux amd64 with Docker,
+buildx, Bash, jq, curl, iproute2 (`ss`) and GNU coreutils available:
+
+```sh
+bash .github/scripts/verify-release.sh ghcr.io/renevo/localoidc:vX.Y.Z
+```
+
+This is a release smoke check, not an OIDC integration suite. ARM64 presence in
+the remote index is checked, **not ARM64 execution**. A failed post-publication
+check does not roll back an already-pushed image or release. Inspect the failure
+before distributing that release. Initial GHCR packages may be **private**;
+anonymous pulls require a separate, explicit package-visibility change in GitHub.
+No remote publication, permissions or visibility change is part of local setup.
 
 ## Implementation and checks
 

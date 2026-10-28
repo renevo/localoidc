@@ -1,0 +1,62 @@
+version: 2
+project_name: localoidc
+# Ignore unrelated GitLab/Gitea credentials on developer machines.
+force_token: github
+
+builds:
+  - id: localoidc
+    main: .
+    binary: localoidc
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.FullCommit}} -X main.date={{.Date}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{.ProjectName}}_{{.Version}}_{{.Os}}_{{.Arch}}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - localoidc.example.json
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{.Version}}-snapshot"
+
+dockers_v2:
+  - ids: [localoidc]
+    images:
+      - ghcr.io/renevo/localoidc
+    tags:
+      - "{{.Tag}}"
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    # No package manager or OS packages exist in the scratch image.
+    sbom: false
+    labels:
+      org.opencontainers.image.title: localoidc
+      org.opencontainers.image.description: Development-only synthetic OpenID Connect provider; not authentication
+      org.opencontainers.image.source: https://github.com/renevo/localoidc
+      org.opencontainers.image.version: "{{.Version}}"
+      org.opencontainers.image.revision: "{{.FullCommit}}"
+      org.opencontainers.image.created: "{{.Date}}"
+
+release:
+  github:
+    owner: renevo
+    name: localoidc
