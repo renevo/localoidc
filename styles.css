@@ -1,8 +1,8 @@
 :root {
   color-scheme: dark;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #121110;
-  color: #e9e5df;
+  background: #151515;
+  color: #eeeeee;
   font-synthesis: none;
   line-height: 1.5;
 }
@@ -26,9 +26,9 @@ body {
   margin: auto;
   padding: 32px;
   flex-shrink: 0;
-  border: 1px solid #3a3732;
+  border: 1px solid #303030;
   border-radius: 12px;
-  background: #1a1917;
+  background: #242424;
   overflow-wrap: anywhere;
 }
 
@@ -39,7 +39,7 @@ code {
 
 .wordmark {
   margin: 0 0 28px;
-  color: #ada69c;
+  color: #aaaaaa;
   font-size: 14px;
   letter-spacing: -0.02em;
 }
@@ -68,7 +68,7 @@ p {
 .identity-email,
 .identity-subject {
   margin-top: 4px;
-  color: #ada69c;
+  color: #aaaaaa;
   font-size: 14px;
 }
 
@@ -80,10 +80,10 @@ button {
   width: 100%;
   min-height: 46px;
   padding: 11px 16px;
-  border: 1px solid #fab283;
+  border: 1px solid #d4d4d4;
   border-radius: 6px;
-  background: #fab283;
-  color: #21170f;
+  background: #d4d4d4;
+  color: #151515;
   font: inherit;
   font-size: 14px;
   font-weight: 600;
@@ -91,18 +91,18 @@ button {
 }
 
 button:hover {
-  border-color: #ffc49f;
-  background: #ffc49f;
+  border-color: #eeeeee;
+  background: #eeeeee;
 }
 
 button:active {
-  border-color: #e89b69;
-  background: #e89b69;
+  border-color: #b8b8b8;
+  background: #b8b8b8;
 }
 
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid #fab283;
+  outline: 2px solid #a8c7fa;
   outline-offset: 4px;
 }
 
@@ -111,12 +111,12 @@ a:focus-visible {
   gap: 16px;
   margin: 28px 0 0;
   padding-top: 24px;
-  border-top: 1px solid #3a3732;
+  border-top: 1px solid #303030;
 }
 
 dt {
   margin-bottom: 4px;
-  color: #ada69c;
+  color: #aaaaaa;
   font-size: 12px;
   font-weight: 500;
 }
@@ -134,19 +134,19 @@ code {
 
 .notice {
   margin-top: 28px;
-  color: #ada69c;
+  color: #aaaaaa;
   font-size: 12px;
 }
 
 .notice strong {
   display: block;
   margin-bottom: 4px;
-  color: #e9e5df;
+  color: #eeeeee;
   font-weight: 500;
 }
 
 .message {
-  color: #ada69c;
+  color: #aaaaaa;
   font-size: 14px;
 }
 
@@ -159,17 +159,17 @@ code {
   min-height: 44px;
   margin-top: 20px;
   padding-block: 12px;
-  color: #fab283;
+  color: #a8c7fa;
   font-size: 14px;
   text-underline-offset: 4px;
 }
 
 .continuation:hover {
-  color: #ffc49f;
+  color: #c2d7fc;
 }
 
 .continuation:active {
-  color: #e89b69;
+  color: #8ab4f8;
 }
 
 @media (max-width: 480px) {
