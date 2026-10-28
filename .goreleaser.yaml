@@ -28,6 +28,7 @@ archives:
       - goos: windows
         formats: [zip]
     files:
+      - LICENSE
       - README.md
       - localoidc.example.json
 
@@ -52,6 +53,7 @@ dockers_v2:
       org.opencontainers.image.title: localoidc
       org.opencontainers.image.description: Development-only synthetic OpenID Connect provider; not authentication
       org.opencontainers.image.source: https://github.com/renevo/localoidc
+      org.opencontainers.image.licenses: MIT
       org.opencontainers.image.version: "{{.Version}}"
       org.opencontainers.image.revision: "{{.FullCommit}}"
       org.opencontainers.image.created: "{{.Date}}"

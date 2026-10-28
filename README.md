@@ -132,8 +132,8 @@ timestamps, nonce, hashes, etc.) cannot be overridden through claim configuratio
 GoReleaser OSS **v2.17.0** produces Linux, macOS (`darwin`) and Windows binaries
 for both amd64 and arm64. Linux/macOS archives are `.tar.gz`; Windows archives are
 `.zip`. Names are `localoidc_<version>_<os>_<arch>.<format>`. Each archive includes
-the binary, this README and the sample configuration. `checksums.txt` contains
-SHA-256 checksums. These are unsigned archives; there is no macOS signing or
+the binary, LICENSE, this README and the sample configuration. `checksums.txt`
+contains SHA-256 checksums. These are unsigned archives; there is no macOS signing or
 notarization. Cross-compilation does not establish runtime compatibility: only
 Linux amd64 is runtime-validated here.
 
@@ -276,3 +276,7 @@ Manual smoke checklist:
    Check for horizontal overflow, reachable headings, and buttons at least 44px
    high. Inspect expired/invalid confirmation pages and the continuation fallback
    at desktop and narrow widths (disable automatic refresh to inspect the fallback).
+
+## License
+
+Licensed under the [MIT License](LICENSE).
