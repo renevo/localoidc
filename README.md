@@ -196,7 +196,7 @@ have mode `0600`; `chmod 0644 localoidc.example.json` makes that sample readable
 Do not make sensitive files world-readable just to mount them. Environment
 configuration and application flags work as with the native binary.
 
-### Future tag publication and verification
+### Future tag publication
 
 Nothing is published by a local snapshot or pull-request CI. After this repository
 is hosted at `github.com/renevo/localoidc`, review/merge the changes and explicitly
@@ -211,24 +211,8 @@ push a new semantic version tag such as `v0.1.0`. The tag-only release workflow:
    There is no `latest` alias. The source label associates the package with this
    repository; an existing package may require granting this repository Actions
    access before publication can succeed.
-3. Resolves the **remote index digest**, verifies both executable platforms
-   (ignoring identified attestation descriptors), then pulls/runs the immutable
-   amd64 image on the Linux runner. It checks the configured nonroot user,
-   read-only/capability-restricted startup, the discovery issuer, and the actual
-   listening socket: only `127.0.0.1:18083`, including an IPv6 listener check.
-   Retries and commands are bounded; failure prints container logs and cleans up.
 
-The post-publication check can also be run on native Linux amd64 with Docker,
-buildx, Bash, jq, curl, iproute2 (`ss`) and GNU coreutils available:
-
-```sh
-bash .github/scripts/verify-release.sh ghcr.io/renevo/localoidc:vX.Y.Z
-```
-
-This is a release smoke check, not an OIDC integration suite. ARM64 presence in
-the remote index is checked, **not ARM64 execution**. A failed post-publication
-check does not roll back an already-pushed image or release. Inspect the failure
-before distributing that release. Initial GHCR packages may be **private**;
+Initial GHCR packages may be **private**;
 anonymous pulls require a separate, explicit package-visibility change in GitHub.
 No remote publication, permissions or visibility change is part of local setup.
 

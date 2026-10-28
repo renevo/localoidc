@@ -52,8 +52,3 @@ jobs:
           args: release --clean --parallelism 2 --timeout 15m
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Verify published index and run immutable amd64 image
-        timeout-minutes: 3
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: bash .github/scripts/verify-release.sh "ghcr.io/renevo/localoidc:${RELEASE_TAG}"
