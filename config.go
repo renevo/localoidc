@@ -114,7 +114,7 @@ func loadSettings(ctx context.Context, args, environment []string, output io.Wri
 	skipSetting := set.Setting("skip_confirmation", cfg.SkipConfirmation, "Skip ordinary confirmation")
 	identitySetting := set.Setting("identity", cfg.Identity, "Synthetic identity", config.WithCodec(jsonCodec[identity]{}))
 	scopesSetting := set.Setting("scopes", cfg.Scopes, "Scope claim mappings", config.WithCodec(jsonCodec[map[string][]string]{}))
-	redirectSetting := set.Setting("redirect_uris", cfg.RedirectURIs, "Optional exact local callbacks", config.WithCodec(jsonCodec[[]string]{}))
+	redirectSetting := set.Setting("redirect_uris", cfg.RedirectURIs, "Optional exact loopback or HTTPS callbacks", config.WithCodec(jsonCodec[[]string]{}))
 	requestSetting := set.Setting("request_lifetime", cfg.RequestLifetime, "Pending request lifetime")
 	codeSetting := set.Setting("code_lifetime", cfg.CodeLifetime, "Authorization code lifetime")
 	tokenSetting := set.Setting("token_lifetime", cfg.TokenLifetime, "Token lifetime")
@@ -226,8 +226,8 @@ func (s settings) validate() error {
 		}
 	}
 	for _, uri := range s.RedirectURIs {
-		if !localCallback(uri) {
-			return errors.New("redirect_uris must contain only valid local HTTP(S) callbacks")
+		if !configuredCallback(uri) {
+			return errors.New("redirect_uris must contain only valid loopback HTTP(S) or explicit HTTPS callbacks")
 		}
 	}
 	for _, lifetime := range []time.Duration{s.RequestLifetime, s.CodeLifetime, s.TokenLifetime} {

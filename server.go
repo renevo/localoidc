@@ -149,7 +149,7 @@ func (s *server) authorize(w http.ResponseWriter, r *http.Request) {
 	// This runs before any library error can redirect. Arbitrary client IDs do
 	// not authorize arbitrary destinations, including destinations for errors.
 	if !s.cfg.callbackAllowed(request.RedirectURI) {
-		http.Error(w, "redirect_uri must be an allowed local HTTP(S) callback", http.StatusBadRequest)
+		http.Error(w, "redirect_uri must be an allowed loopback or explicitly configured HTTPS callback", http.StatusBadRequest)
 		return
 	}
 	ctx := context.WithValue(r.Context(), requestContextKey{}, clientContext{redirect: request.RedirectURI})
