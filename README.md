@@ -74,7 +74,7 @@ prints build metadata and exits.
 | `skip_confirmation` | `LOCALOIDC_SKIP_CONFIRMATION` | `false` |
 | `identity` | `LOCALOIDC_IDENTITY` | local-user / Local Developer / developer@localhost |
 | `scopes` | `LOCALOIDC_SCOPES` | openid, profile, email mappings |
-| `redirect_uris` | `LOCALOIDC_REDIRECT_URIS` | `[]`: any valid local callback |
+| `redirect_uris` | `LOCALOIDC_REDIRECT_URIS` | `[]`: any valid loopback callback; nonempty: exact loopback or HTTPS callbacks |
 | `request_lifetime` | `LOCALOIDC_REQUEST_LIFETIME` | `5m` |
 | `code_lifetime` | `LOCALOIDC_CODE_LIFETIME` | `1m` |
 | `token_lifetime` | `LOCALOIDC_TOKEN_LIFETIME` | `1h` |
@@ -86,6 +86,23 @@ Composite environment values are JSON, for example
 Durations use Go duration syntax and must be between `1s` and `24h`.
 The live request and token maps each have the configured hard capacity. Expired
 entries are reclaimed on activity; valid entries are never silently evicted.
+
+An empty `redirect_uris` accepts only valid HTTP(S) callbacks on `localhost`,
+`127.0.0.1`, or `[::1]`. A nonempty list requires exact URI matches, including
+scheme, host, port, path, and query. Explicit entries may also use other hosts
+over **HTTPS**, for local applications with a custom development hostname and
+a trusted certificate. For example:
+
+```sh
+LOCALOIDC_REDIRECT_URIS='["https://app.example.test:8443/callback"]' ./localoidc
+```
+
+These entries are trusted destinations for synthetic identity. Configure only
+your local application's exact callback, not shared or production endpoints.
+No DNS lookup verifies that a configured host resolves to loopback. Wildcard hosts,
+userinfo, fragments, and non-loopback HTTP callbacks remain rejected. This does
+not change the issuer, listener, or your application's TLS verification; use a
+certificate trusted by your browser for the callback hostname.
 
 `identity` contains a nonempty stable `sub` (no colon, due to the library's opaque
 bearer format) and a `claims` object. Standard claims retain their proper types;
@@ -100,10 +117,10 @@ timestamps, nonce, hashes, etc.) cannot be overridden through claim configuratio
 - Listens only on **127.0.0.1**, never all interfaces. There is no host flag.
   `HTTP_ADDRESS` is rejected. Incoming Host must be the exact canonical authority;
   forwarded/proxy headers do not alter the issuer. A port conflict fails startup.
-- Callback hosts must be exactly `localhost`, `127.0.0.1`, or `[::1]`, using HTTP(S).
-  Any valid local port is accepted. No userinfo, fragments, custom schemes, hostname
-  lookalikes, remote destinations, or DNS resolution. Nonempty `redirect_uris`
-  further narrows callbacks to exact URI matches, including port/path/query.
+- Callback hosts default to exactly `localhost`, `127.0.0.1`, or `[::1]`, using
+  HTTP(S), with any valid local port. Nonempty `redirect_uris` requires exact URI
+  matches and may explicitly trust other HTTPS hosts as described above. No
+  userinfo, fragments, custom schemes, wildcards, or DNS resolution.
 - No refresh/device/client-credentials/JWT grants, implicit/hybrid flow, logout,
   introspection, revocation, dynamic registration, or remote metadata fetching.
   Discovery does not advertise those features; their routes are not mounted.

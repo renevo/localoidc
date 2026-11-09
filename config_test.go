@@ -56,6 +56,32 @@ func TestConfigurationPrecedenceAndTypes(t *testing.T) {
 	is.Equal(cfg.SkipConfirmation, false)
 }
 
+func TestHTTPSCallbackConfiguration(t *testing.T) {
+	is := is.New(t)
+	path := filepath.Join(t.TempDir(), "callbacks.json")
+	fileConfig := []byte(`{"redirect_uris":["https://file.example.test:8443/callback"]}`)
+
+	is.NoErr(os.WriteFile(path, fileConfig, 0600)) // The file fixture must provide an explicit custom-host HTTPS callback.
+
+	cfg, err := loadSettings(context.Background(), []string{"--config", path}, nil, io.Discard)
+
+	is.NoErr(err)                                                                   // Custom-host HTTPS callbacks must load through the existing JSON setting.
+	is.Equal(cfg.RedirectURIs, []string{"https://file.example.test:8443/callback"}) // Loading must preserve the exact configured URI.
+
+	environment := []string{`LOCALOIDC_REDIRECT_URIS=["https://env.example.test:9443/callback?tenant=local"]`}
+	cfg, err = loadSettings(context.Background(), []string{"--config", path}, environment, io.Discard)
+
+	is.NoErr(err)                                                                               // The existing environment setting must also accept custom-host HTTPS callbacks.
+	is.Equal(cfg.RedirectURIs, []string{"https://env.example.test:9443/callback?tenant=local"}) // Environment values must replace, not merge with, file callbacks.
+	is.True(!cfg.callbackAllowed("https://file.example.test:8443/callback"))                    // An overridden callback must no longer be trusted.
+
+	cfg, err = loadSettings(context.Background(), []string{"--config", path}, []string{"LOCALOIDC_REDIRECT_URIS=[]"}, io.Discard)
+
+	is.NoErr(err)                                                            // An empty environment allowlist must restore the default loopback policy.
+	is.True(!cfg.callbackAllowed("https://file.example.test:8443/callback")) // Clearing the list must revoke explicit hostname trust.
+	is.True(cfg.callbackAllowed("http://localhost:9000/callback"))           // Clearing the list must retain the original loopback workflow.
+}
+
 func TestInvalidConfiguration(t *testing.T) {
 	for _, env := range []string{
 		"HTTP_PORT=0", "HTTP_PORT=65536", "HTTP_PORT=garbage", "HTTP_ADDRESS=0.0.0.0:8080",
@@ -70,12 +96,12 @@ func TestInvalidConfiguration(t *testing.T) {
 		`LOCALOIDC_SCOPES={"profile":[]}`,
 		`LOCALOIDC_SCOPES={"openid":[],"offline_access":[]}`,
 		`LOCALOIDC_SCOPES={"openid":[],"custom":["undefined"]}`,
-		`LOCALOIDC_REDIRECT_URIS=["https://example.com/callback"]`,
+		`LOCALOIDC_REDIRECT_URIS=["http://example.test/callback"]`,
 	} {
 		t.Run(env, func(t *testing.T) {
 			is := is.New(t)
 			_, err := loadSettings(context.Background(), nil, []string{env}, io.Discard)
-			is.True(err != nil)
+			is.True(err != nil) // Invalid settings must fail startup rather than silently relaxing policy.
 		})
 	}
 	is := is.New(t)

@@ -12,47 +12,72 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
-func localCallback(raw string) bool {
+// callbackURL validates callback syntax without resolving or trusting its host.
+// Whether a destination is trusted is decided separately by callbackAllowed.
+func callbackURL(raw string) *url.URL {
 	u, err := url.Parse(raw)
 	if err != nil || u.Opaque != "" || u.User != nil || u.Fragment != "" || strings.Contains(raw, "#") {
-		return false
+		return nil
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return false
+		return nil
 	}
-	// Exact literals only. Never resolve a supplied hostname or accept lookalikes.
-	if !slices.Contains([]string{"localhost", "127.0.0.1", "::1"}, u.Hostname()) {
-		return false
+
+	host := u.Hostname()
+	if host == "" || strings.ContainsAny(host, "*%") {
+		return nil
 	}
+
 	// Brackets are valid only for the IPv6 literal, not a way to spell a
 	// hostname or IPv4 address. Reconstruct the authority to reject those forms.
-	expectedHost := u.Hostname()
-	if expectedHost == "::1" {
-		expectedHost = "[::1]"
+	expectedHost := host
+	if strings.Contains(host, ":") {
+		if net.ParseIP(host) == nil {
+			return nil
+		}
+		expectedHost = "[" + host + "]"
 	}
 	if u.Port() != "" {
 		expectedHost += ":" + u.Port()
 	}
 	if u.Host != expectedHost {
-		return false
+		return nil
 	}
 	if strings.Contains(u.Host, "%") || strings.HasSuffix(u.Host, ":") {
-		return false
+		return nil
 	}
 	if port := u.Port(); port != "" {
 		p, err := strconv.Atoi(port)
 		if err != nil || p < 1 || p > 65535 {
-			return false
+			return nil
 		}
 	}
 	if _, err := url.ParseQuery(u.RawQuery); err != nil {
-		return false
+		return nil
 	}
-	return true
+	return u
+}
+
+func localCallback(raw string) bool {
+	u := callbackURL(raw)
+
+	// Exact literals only. Never resolve a supplied hostname or accept lookalikes.
+	return u != nil && slices.Contains([]string{"localhost", "127.0.0.1", "::1"}, u.Hostname())
+}
+
+func configuredCallback(raw string) bool {
+	u := callbackURL(raw)
+	return u != nil && (u.Scheme == "https" || localCallback(raw))
 }
 
 func (s settings) callbackAllowed(raw string) bool {
-	return localCallback(raw) && (len(s.RedirectURIs) == 0 || slices.Contains(s.RedirectURIs, raw))
+	if len(s.RedirectURIs) == 0 {
+		return localCallback(raw)
+	}
+
+	// Only exact configured HTTPS destinations may leave the loopback host list.
+	// Keep syntax checks here as well as at startup so invalid settings fail closed.
+	return slices.Contains(s.RedirectURIs, raw) && configuredCallback(raw)
 }
 
 func (s settings) authorityAllowed(authority string) bool {
